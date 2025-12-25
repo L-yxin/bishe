@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付成功</title>
+    <!-- Element Plus CSS & JS CDN -->
+    <link rel="stylesheet" href="./elementplus.index.css">
+    <script src="./vue.global.js"></script>
+    <script src="./index.full.js"></script>
+    <!-- Element Plus 图标库 -->
+    <script src="./index.iife.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200vw;
+            height: 200vh;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Ctext x='0' y='50' font-size='18' fill='rgba(0,0,0,0.25)' transform='rotate(45deg)'%3E毕设作品,非真实信息 | 作者:LYX%3C/text%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 400px 300px;
+            transform: rotateZ(-45deg) translateY(-100vh) translateX(20vw);
+        }
+
+        .pay-container {
+            width: 100%;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .wx-bg {
+            background-color: #f0f9eb;
+        }
+
+        .alipay-bg {
+            background-color: #e8f4ff;
+        }
+
+        .cash-bg {
+            background-color: #f8f8f8;
+        }
+
+        .success-card {
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .cash-amount {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+            line-height: 1;
+        }
+
+        .wx-amount {
+            color: #07c160;
+        }
+
+        .alipay-amount {
+            color: #1677ff;
+        }
+
+        .cash-amount-color {
+            color: #666;
+        }
+
+        .pay-info-row {
+            margin-bottom: 8px;
+        }
+
+        .pay-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .change-info {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+
+        /* 自定义图标样式 */
+        .custom-icon {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .wx-icon {
+            background-color: #07c160;
+        }
+
+        .alipay-icon {
+            background-color: #1677ff;
+        }
+
+        .cash-icon {
+            background-color: #666;
+        }
+
+        .custom-icon::after {
+            content: "✓";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            color: white;
+            font-weight: bold;
+        }
+
+        @media (max-width: 400px) {
+            .cash-amount {
+                font-size: 36px;
+            }
+
+            .success-card {
+                padding: 15px;
+            }
+
+            .watermark {
+                background-size: 250px 180px;
+            }
+            
+            .custom-icon {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .custom-icon::after {
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="watermark"></div>
+
+    <div id="app">
+        <div class="pay-container" :class="payBgClass">
+            <el-card class="success-card" :shadow="isMobile ? 'never' : 'hover'">
+                <!-- 自定义图标 -->
+                <div :class="['custom-icon', iconClass]"></div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h2 style="font-size: 20px; color: #333; margin-bottom: 5px;">{{ payTitle }}</h2>
+                    <p style="font-size: 14px; color: #999;">{{ payDesc }}</p>
+                </div>
+                
+                <div :class="['cash-amount', amountColorClass]">¥{{ formattedCash }}</div>
+                
+                <el-descriptions :column="1" border size="small" style="margin-bottom: 20px;">
+                    <el-descriptions-item label="支付方式">
+                        <el-tag :type="payTagType" size="small">{{ payMethod }}</el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="支付时间">{{ payTime }}</el-descriptions-item>
+                    <el-descriptions-item label="订单编号">{{ orderNo }}</el-descriptions-item>
+
+                    <el-descriptions-item v-if="payType === 'cash' && priceDifference != 0" label="找赎金额"
+                        class="change-info">
+                        <el-tag :type="priceDifference > 0 ? 'warning' : 'success'" size="small">
+                            {{ '已找赎' }} ¥{{ Math.abs(priceDifference).toFixed(2) }}
+                        </el-tag>
+                    </el-descriptions-item>
+
+                    <el-descriptions-item v-if="payType === 'cash'" label="订单金额">
+                        ¥{{ formattedCash }}
+                    </el-descriptions-item>
+                </el-descriptions>
+            </el-card>
+            
+            <el-button @click="goBack" :type="payButtonType" plain
+                style="max-width: 400px; width: 100%; margin-top: 20px;">
+                返回上一页
+            </el-button>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onBeforeUnmount } = Vue;
+        const { 
+            ElCard, 
+            ElDescriptions, 
+            ElDescriptionsItem, 
+            ElTag, 
+            ElButton
+        } = ElementPlus;
+
+        createApp({
+            setup() {
+                const payType = ref('cash');
+                const cashAmount = ref(0.00);
+                const priceDifference = ref(0);
+                const isMobile = ref(window.innerWidth <= 400);
+
+                const handleResize = () => {
+                    isMobile.value = window.innerWidth <= 400;
+                };
+
+                const formattedCash = computed(() => {
+                    return parseFloat(cashAmount.value).toFixed(2);
+                });
+
+                const payBgClass = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return 'wx-bg';
+                        case 'alipayQC': return 'alipay-bg';
+                        case 'cash': return 'cash-bg';
+                        default: return 'cash-bg';
+                    }
+                });
+
+                // 图标样式类
+                const iconClass = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return 'wx-icon';
+                        case 'alipayQC': return 'alipay-icon';
+                        case 'cash': return 'cash-icon';
+                        default: return 'cash-icon';
+                    }
+                });
+
+                const payTitle = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return '微信支付成功';
+                        case 'alipayQC': return '支付宝支付成功';
+                        case 'cash': return '现金支付成功';
+                        default: return '支付成功';
+                    }
+                });
+
+                const payDesc = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return '支付金额已到账，感谢您的支付';
+                        case 'alipayQC': return '支付金额已到账，感谢您的支付';
+                        case 'cash': return priceDifference.value > 0
+                            ? '请找赎零钱，订单已确认'
+                            : '已完成现金收款，订单已确认';
+                        default: return '您的订单已支付完成';
+                    }
+                });
+
+                const payMethod = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return '微信支付';
+                        case 'alipayQC': return '支付宝支付';
+                        case 'cash': return '现金支付';
+                        default: return '未知支付方式';
+                    }
+                });
+
+                const payTagType = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return 'success';
+                        case 'alipayQC': return 'primary';
+                        case 'cash': return 'info';
+                        default: return 'info';
+                    }
+                });
+
+                const payButtonType = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return 'success';
+                        case 'alipayQC': return 'primary';
+                        case 'cash': return '';
+                        default: return '';
+                    }
+                });
+
+                const amountColorClass = computed(() => {
+                    switch (payType.value) {
+                        case 'wxQC': return 'wx-amount';
+                        case 'alipayQC': return 'alipay-amount';
+                        case 'cash': return 'cash-amount-color';
+                        default: return 'cash-amount-color';
+                    }
+                });
+
+                const payTime = ref('');
+                const orderNo = ref('');
+
+                const generateOrderNo = () => {
+                    const date = new Date();
+                    const year = date.getFullYear();
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const random = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+                    return `${year}${month}${day}${random}`;
+                };
+
+                const formatPayTime = () => {
+                    const date = new Date();
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    const seconds = date.getSeconds().toString().padStart(2, '0');
+                    const year = date.getFullYear();
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                };
+
+                const parseUrlParams = () => {
+                    const params = new URLSearchParams(window.location.search);
+
+                    const payParam = params.get('pay');
+                    if (payParam && ['wxQC', 'alipayQC', 'cash'].includes(payParam)) {
+                        payType.value = payParam;
+                    }
+
+                    const cashParam = params.get('cash');
+                    if (cashParam && !isNaN(parseFloat(cashParam))) {
+                        cashAmount.value = parseFloat(cashParam);
+                    }
+
+                    const diffParam = params.get('priceDifference');
+                    if (diffParam && !isNaN(parseFloat(diffParam))) {
+                        priceDifference.value = parseFloat(diffParam);
+                    }
+
+                    payTime.value = formatPayTime();
+                    orderNo.value = generateOrderNo();
+                };
+
+                const goBack = () => {
+                    history.back();
+                };
+
+                onMounted(() => {
+                    parseUrlParams();
+                    window.addEventListener('resize', handleResize);
+                });
+
+                onBeforeUnmount(() => {
+                    window.removeEventListener('resize', handleResize);
+                });
+
+                return {
+                    payType,
+                    cashAmount,
+                    priceDifference,
+                    isMobile,
+                    formattedCash,
+                    payBgClass,
+                    iconClass,
+                    payTitle,
+                    payDesc,
+                    payMethod,
+                    payTagType,
+                    payButtonType,
+                    amountColorClass,
+                    payTime,
+                    orderNo,
+                    goBack
+                };
+            },
+            components: {
+                ElCard,
+                ElDescriptions,
+                ElDescriptionsItem,
+                ElTag,
+                ElButton
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+</body>
+
+</html>

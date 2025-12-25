@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>支付成功</title>
+  <style>
+    /* 全局样式重置 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* 密集水印样式（核心修改） */
+    .watermark {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 200vw;
+      height: 200vh;
+      pointer-events: none; /* 不影响点击 */
+      z-index: 9999;
+      /* 水印重复排列 */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Ctext x='0' y='50' font-size='18' fill='rgba(0,0,0,0.25)' transform='rotate(45deg)'%3E毕设作品,非真实信息 | 作者:LYX%3C/text%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 400px 300px; /* 水印间距（越小越密集） */
+      transform: rotateZ(-45deg) translateY(-100vh) translateX(20vw); 
+    }
+
+    /* 页面容器 */
+    .pay-container {
+      width: 100%;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #f5f5f5;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 微信支付主题 */
+    .wx-pay {
+      background-color: #f0f9eb;
+    }
+    .wx-pay .success-card {
+      background-color: #fff;
+      border-radius: 12px;
+      padding: 40px 20px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .wx-pay .success-icon {
+      width: 80px;
+      height: 80px;
+      background-color: #07c160;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .wx-pay .success-icon::after {
+      content: "✓";
+      font-size: 40px;
+      color: #fff;
+      font-weight: bold;
+    }
+    .wx-pay .pay-title {
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .wx-pay .pay-desc {
+      font-size: 14px;
+      color: #999;
+      margin-bottom: 30px;
+    }
+    .wx-pay .cash-amount {
+      font-size: 48px;
+      color: #07c160;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .wx-pay .pay-info {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    .wx-pay .pay-info-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .wx-pay .pay-info-item:last-child {
+      margin-bottom: 0;
+    }
+    .wx-pay .pay-info-item .label {
+      color: #999;
+    }
+    .wx-pay .wx-logo {
+      width: 100px;
+      height: 30px;
+      background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMzAiPgogIDxnIGZpbGw9IiMwN2MxNjAiPgogICAgPHBhdGggZD0iTTUwIDBIMHYYMzBIMTAwVjBIMjVWMTVWMEg1MFoiLz4KICAgIDxwYXRoIGQ9Ik03NSAxNUg3MFY1SDY1VjE1SDYwVjIwSDU1VjE1SDUwVjIwSDQ1VjE1SDQwVjIwSDM1VjE1SDMwVjVWMjVIMjVWMTVWMEgyMEgyNVY1SDAiIGZpbGw9IiNmZmYiLz4KICA8L2c+Cjwvc3ZnPg==") no-repeat center;
+      background-size: contain;
+      margin: 0 auto;
+    }
+
+    /* 支付宝支付主题 */
+    .alipay-pay {
+      background-color: #e8f4ff;
+    }
+    .alipay-pay .success-card {
+      background-color: #fff;
+      border-radius: 12px;
+      padding: 40px 20px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .alipay-pay .success-icon {
+      width: 80px;
+      height: 80px;
+      background-color: #1677ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .alipay-pay .success-icon::after {
+      content: "✓";
+      font-size: 40px;
+      color: #fff;
+      font-weight: bold;
+    }
+    .alipay-pay .pay-title {
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .alipay-pay .pay-desc {
+      font-size: 14px;
+      color: #999;
+      margin-bottom: 30px;
+    }
+    .alipay-pay .cash-amount {
+      font-size: 48px;
+      color: #1677ff;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .alipay-pay .pay-info {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    .alipay-pay .pay-info-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .alipay-pay .pay-info-item:last-child {
+      margin-bottom: 0;
+    }
+    .alipay-pay .pay-info-item .label {
+      color: #999;
+    }
+    .alipay-pay .alipay-logo {
+      width: 100px;
+      height: 30px;
+      background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMzAiPgogIDxnIGZpbGw9IiMxNjc3ZmYiPgogICAgPHBhdGggZD0iTTUwIDBIMHYYMzBIMTAwVjBIMjVWMTVWMEg1MFoiLz4KICAgIDxwYXRoIGQ9Ik03NSAxNUg3MFY1SDY1VjE1SDYwVjIwSDU1VjE1SDUwVjIwSDQ1VjE1SDQwVjIwSDM1VjE1SDMwVjVWMjVIMjVWMTVWMEgyMEgyNVY1SDAiIGZpbGw9IiNmZmYiLz4KICA8L2c+Cjwvc3ZnPg==") no-repeat center;
+      background-size: contain;
+      margin: 0 auto;
+    }
+
+    /* 现金支付主题 */
+    .cash-pay {
+      background-color: #f8f8f8;
+    }
+    .cash-pay .success-card {
+      background-color: #fff;
+      border-radius: 12px;
+      padding: 40px 20px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .cash-pay .success-icon {
+      width: 80px;
+      height: 80px;
+      background-color: #666;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .cash-pay .success-icon::after {
+      content: "✓";
+      font-size: 40px;
+      color: #fff;
+      font-weight: bold;
+    }
+    .cash-pay .pay-title {
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .cash-pay .pay-desc {
+      font-size: 14px;
+      color: #999;
+      margin-bottom: 30px;
+    }
+    .cash-pay .cash-amount {
+      font-size: 48px;
+      color: #666;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .cash-pay .pay-info {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    .cash-pay .pay-info-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .cash-pay .pay-info-item:last-child {
+      margin-bottom: 0;
+    }
+    .cash-pay .pay-info-item .label {
+      color: #999;
+    }
+
+    /* 底部按钮 */
+    .back-btn {
+      width: 100%;
+      max-width: 400px;
+      height: 44px;
+      line-height: 44px;
+      text-align: center;
+      background-color: #fff;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      font-size: 16px;
+      color: #666;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .back-btn:hover {
+      background-color: #f5f5f5;
+    }
+
+    /* 响应式适配 */
+    @media (max-width: 400px) {
+      .cash-amount {
+        font-size: 36px !important;
+      }
+      .success-card {
+        padding: 30px 15px !important;
+      }
+      /* 移动端水印间距调整，避免过于密集 */
+      .watermark {
+        background-size: 250px 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 密集水印层（核心修改） -->
+  <div class="watermark"></div>
+  
+  <!-- 支付容器（动态切换类名） -->
+  <div class="pay-container" id="payContainer">
+    <div class="success-card">
+      <div class="success-icon"></div>
+      <h2 class="pay-title" id="payTitle">支付成功</h2>
+      <p class="pay-desc" id="payDesc">您的订单已支付完成</p>
+      <div class="cash-amount" id="cashAmount">¥0.00</div>
+      <div class="pay-info">
+        <div class="pay-info-item">
+          <span class="label">支付方式</span>
+          <span id="payMethod">未知</span>
+        </div>
+        <div class="pay-info-item">
+          <span class="label">支付时间</span>
+          <span id="payTime"></span>
+        </div>
+        <div class="pay-info-item">
+          <span class="label">订单编号</span>
+          <span id="orderNo"></span>
+        </div>
+      </div>
+      <!-- 支付方式logo（微信/支付宝） -->
+      <div id="payLogo" class=""></div>
+    </div>
+    <div class="back-btn" onclick="history.back()">返回上一页</div>
+  </div>
+
+  <script>
+    // 1. 提取URL参数
+    const getUrlParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        pay: params.get('pay') || 'cash', // 默认现金支付
+        cash: params.get('cash') || '0.00' // 默认0元
+      };
+    };
+
+    // 2. 格式化金额（确保两位小数）
+    const formatCash = (cash) => {
+      const num = parseFloat(cash);
+      return isNaN(num) ? '0.00' : num.toFixed(2);
+    };
+
+    // 3. 生成随机订单号
+    const generateOrderNo = () => {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const random = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+      return `${year}${month}${day}${random}`;
+    };
+
+    // 4. 格式化支付时间
+    const formatPayTime = () => {
+      const date = new Date();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const seconds = date.getSeconds().toString().padStart(2, '0');
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
+    // 5. 初始化页面
+    const initPage = () => {
+      const { pay, cash } = getUrlParams();
+      const container = document.getElementById('payContainer');
+      const payTitle = document.getElementById('payTitle');
+      const payDesc = document.getElementById('payDesc');
+      const cashAmount = document.getElementById('cashAmount');
+      const payMethod = document.getElementById('payMethod');
+      const payTime = document.getElementById('payTime');
+      const orderNo = document.getElementById('orderNo');
+      const payLogo = document.getElementById('payLogo');
+
+      // 设置金额
+      cashAmount.textContent = `¥${formatCash(cash)}`;
+      // 设置时间和订单号
+      payTime.textContent = formatPayTime();
+      orderNo.textContent = generateOrderNo();
+
+      // 根据支付方式切换样式和文案
+      switch (pay) {
+        case 'wxQC':
+          // 微信支付
+          container.className = 'pay-container wx-pay';
+          payTitle.textContent = '微信支付成功';
+          payDesc.textContent = '支付金额已到账，感谢您的支付';
+          payMethod.textContent = '微信支付';
+          payLogo.className = 'wx-logo';
+          break;
+        case 'alipayQC':
+          // 支付宝支付
+          container.className = 'pay-container alipay-pay';
+          payTitle.textContent = '支付宝支付成功';
+          payDesc.textContent = '支付金额已到账，感谢您的支付';
+          payMethod.textContent = '支付宝支付';
+          payLogo.className = 'alipay-logo';
+          break;
+        case 'cash':
+          // 现金支付
+          container.className = 'pay-container cash-pay';
+          payTitle.textContent = '现金支付成功';
+          payDesc.textContent = '已完成现金收款，订单已确认';
+          payMethod.textContent = '现金支付';
+          payLogo.style.display = 'none'; // 隐藏logo
+          break;
+        default:
+          // 默认现金支付
+          container.className = 'pay-container cash-pay';
+          payTitle.textContent = '支付成功';
+          payDesc.textContent = '您的订单已支付完成';
+          payMethod.textContent = '未知支付方式';
+          payLogo.style.display = 'none';
+          break;
+      }
+    };
+
+    // 页面加载完成后初始化
+    window.onload = initPage;
+  </script>
+</body>
+</html>
